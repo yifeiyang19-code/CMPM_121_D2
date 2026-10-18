@@ -173,6 +173,9 @@ let activePointerId: number | null = null;
 let currentPoint: Point | null = null;
 let activeStroke: StrokeData | null = null;
 
+// Store all completed drawing actions
+const drawingItems: DrawingData[] = [];
+
 function getsCanvasPoint(event: PointerEvent): Point {
   const rect = canvas.getBoundingClientRect();
   const x = (event.clientX - rect.left) * (canvas.width / rect.width);
@@ -257,6 +260,14 @@ function handlePointerUp(event: PointerEvent) {
     return;
   }
   handlePointerMove(event);
+
+  // Save the completed stroke
+  if (activeStroke !== null) {
+    drawingItems.push(activeStroke);
+    console.log("Drawing Data:", structuredClone(drawingItems));
+    activeStroke = null;
+  }
+
   activePointerId = null;
   currentPoint = null;
 
