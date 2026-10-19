@@ -220,7 +220,7 @@ const drawingItems: DrawingData[] = [];
 // Draw a saved stroke or sticker on the target canvas
 function drawItem(
   target: CanvasRenderingContext2D,
-  item: DrawingData
+  item: DrawingData,
 ) {
   // Save the current drawing settings
   target.save();
@@ -242,7 +242,7 @@ function drawItem(
         point.y,
         item.width / 2,
         0,
-        Math.PI * 2
+        Math.PI * 2,
       );
       target.fill();
     } else if (item.points.length > 1) {
@@ -260,10 +260,13 @@ function drawItem(
       target.stroke();
     }
   } else if (item.kind === "sticker") {
-    // Draw text or emoji at the saved position
+    // Draw text or emoji centered at the saved position
     target.fillStyle = item.color;
     target.font = `${item.fontSize}px ${item.fontFamily}`;
-    target.textBaseline = "top";
+
+    // Center the sticker horizontally and vertically
+    target.textAlign = "center";
+    target.textBaseline = "middle";
 
     target.fillText(item.text, item.x, item.y);
   }
@@ -388,7 +391,6 @@ function handlePointerUp(event: PointerEvent) {
   // Record the final pointer position
   handlePointerMove(event);
 
-  // Save the completed stroke
   if (activeStroke !== null) {
     drawingItems.push(activeStroke);
     console.log("Drawing Data:", structuredClone(drawingItems));
@@ -503,7 +505,7 @@ app.append(
   selectedToolMessage,
   stickerForm,
   redrawButton,
-  canvas
+  canvas,
 );
 
 // Render the initial blank canvas
