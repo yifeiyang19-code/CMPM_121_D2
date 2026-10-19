@@ -100,40 +100,75 @@ const tools: Tool[] = [
 ];
 
 let selectedToolId: string = "brush-thin";
+
+// 集中设置 toolbar 样式（display flex, flexWrap wrap, gap 8px, marginBottom 12px）
 const toolbar = document.createElement("div");
+toolbar.style.display = "flex";
+toolbar.style.flexWrap = "wrap";
+toolbar.style.gap = "8px";
+toolbar.style.marginBottom = "12px";
+
+// 创建当前工具说明段落并设置 aria-live="polite"
+const selectedToolMessage = document.createElement("p");
+selectedToolMessage.setAttribute("aria-live", "polite");
+
 const stickerForm = document.createElement("form");
+
+const instructionP = document.createElement("p");
+instructionP.textContent =
+  "Create a reusable sticker tool from text or emoji, then select it from the toolbar.";
+
+const nameGroup = document.createElement("div");
+nameGroup.style.marginBottom = "8px";
 const nameLabel = document.createElement("label");
 const nameInput = document.createElement("input");
-const textLabel = document.createElement("label");
-const textInput = document.createElement("input");
-const createButton = document.createElement("button");
-const toolMessage = document.createElement("p");
-
 nameLabel.textContent = "Tool name";
 nameInput.type = "text";
 nameInput.id = "tool-name";
 nameLabel.htmlFor = "tool-name";
 nameInput.placeholder = "My Sticker";
+nameLabel.style.display = "block";
+nameGroup.append(nameLabel, nameInput);
 
+const textGroup = document.createElement("div");
+textGroup.style.marginBottom = "8px";
+const textLabel = document.createElement("label");
+const textInput = document.createElement("input");
 textLabel.textContent = "Sticker text";
 textInput.type = "text";
 textInput.id = "sticker-text";
 textLabel.htmlFor = "sticker-text";
 textInput.placeholder = "Enter text or emoji";
+textLabel.style.display = "block";
+textGroup.append(textLabel, textInput);
 
+const createButton = document.createElement("button");
 createButton.textContent = "Create Sticker";
 createButton.type = "submit";
+
+const cancelButton = document.createElement("button");
+cancelButton.type = "button";
+cancelButton.textContent = "Cancel";
+
+const toolMessage = document.createElement("p");
 toolMessage.setAttribute("aria-live", "polite");
 stickerForm.style.marginBottom = "12px";
 
 stickerForm.append(
-  nameLabel,
-  nameInput,
-  textLabel,
-  textInput,
+  instructionP,
+  nameGroup,
+  textGroup,
   createButton,
+  cancelButton,
   toolMessage,
 );
+
+cancelButton.addEventListener("click", () => {
+  nameInput.value = "";
+  textInput.value = "";
+  toolMessage.textContent = "";
+  nameInput.focus();
+});
 
 stickerForm.addEventListener("submit", (event) => {
   event.preventDefault();
@@ -141,8 +176,14 @@ stickerForm.addEventListener("submit", (event) => {
   const toolName = nameInput.value.trim();
   const stickerText = textInput.value.trim();
 
-  if (!toolName || !stickerText) {
+  if (!toolName) {
     toolMessage.textContent = "Enter a tool name and sticker text.";
+    nameInput.focus();
+    return;
+  }
+  if (!stickerText) {
+    toolMessage.textContent = "Enter a tool name and sticker text.";
+    textInput.focus();
     return;
   }
 
@@ -162,6 +203,7 @@ stickerForm.addEventListener("submit", (event) => {
   nameInput.value = "";
   textInput.value = "";
   toolMessage.textContent = "Sticker tool created. Select it from the toolbar.";
+  nameInput.focus();
 });
 
 const ctx = canvas.getContext("2d");
@@ -173,8 +215,92 @@ let activePointerId: number | null = null;
 let currentPoint: Point | null = null;
 let activeStroke: StrokeData | null = null;
 
-// Store all completed drawing actions
 const drawingItems: DrawingData[] = [];
+
+// Draw a saved stroke or sticker on the target canvas
+function drawItem(
+  target: CanvasRenderingContext2D,
+  item: DrawingData
+) {
+  // Save the current drawing settings
+  target.save();
+
+  if (item.kind === "stroke") {
+    target.strokeStyle = item.color;
+    target.fillStyle = item.color;
+    target.lineWidth = item.width;
+    target.lineCap = "round";
+    target.lineJoin = "round";
+
+    if (item.points.length === 1) {
+      // Draw a dot for a single point
+      const point = item.points[0]!;
+
+      target.beginPath();
+      target.arc(
+        point.x,
+        point.y,
+        item.width / 2,
+        0,
+        Math.PI * 2
+      );
+      target.fill();
+    } else if (item.points.length > 1) {
+      // Connect all saved points
+      target.beginPath();
+
+      const firstPoint = item.points[0]!;
+      target.moveTo(firstPoint.x, firstPoint.y);
+
+      for (let i = 1; i < item.points.length; i++) {
+        const point = item.points[i]!;
+        target.lineTo(point.x, point.y);
+      }
+
+      target.stroke();
+    }
+  } else if (item.kind === "sticker") {
+    // Draw text or emoji at the saved position
+    target.fillStyle = item.color;
+    target.font = `${item.fontSize}px ${item.fontFamily}`;
+    target.textBaseline = "top";
+
+    target.fillText(item.text, item.x, item.y);
+  }
+
+  // Restore the previous drawing settings
+  target.restore();
+}
+
+// Redraw the entire canvas from saved drawing data
+function renderDrawing() {
+  // Check if the canvas context is available
+  if (!ctx) {
+    throw new Error("Canvas 2D is unavailable");
+  }
+
+  ctx.save();
+
+  // Reset transformations and clear the canvas
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Draw a white background
+  ctx.fillStyle = "white";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Redraw all saved drawing items in order
+  for (const item of drawingItems) {
+    drawItem(ctx, item);
+  }
+
+  // Draw the stroke currently being created
+  if (activeStroke !== null) {
+    drawItem(ctx, activeStroke);
+  }
+
+  ctx.restore();
+}
 
 function getsCanvasPoint(event: PointerEvent): Point {
   const rect = canvas.getBoundingClientRect();
@@ -185,12 +311,22 @@ function getsCanvasPoint(event: PointerEvent): Point {
 
 function renderToolbar() {
   toolbar.replaceChildren();
-  toolbar.style.marginBottom = "12px";
+  const selectedTool = tools.find((t) => t.id === selectedToolId);
+  if (selectedTool) {
+    if (selectedTool.kind === "brush") {
+      selectedToolMessage.textContent =
+        `Selected: ${selectedTool.name} · ${selectedTool.color} · Width: ${selectedTool.width}`;
+    } else if (selectedTool.kind === "sticker") {
+      selectedToolMessage.textContent =
+        `Selected: ${selectedTool.name} · ${selectedTool.text}`;
+    }
+  }
 
   tools.forEach((tool) => {
     const button = document.createElement("button");
     button.type = "button";
     button.textContent = tool.name;
+    button.dataset.toolId = tool.id;
 
     const isSelected = tool.id === selectedToolId;
     button.setAttribute("aria-pressed", isSelected ? "true" : "false");
@@ -205,75 +341,71 @@ function renderToolbar() {
       }
       selectedToolId = tool.id;
       renderToolbar();
+
+      const targetButton = toolbar.querySelector<HTMLButtonElement>(
+        `button[data-tool-id="${tool.id}"]`,
+      );
+      if (targetButton) {
+        targetButton.focus();
+      }
     });
 
     toolbar.appendChild(button);
   });
 }
+
 renderToolbar();
 
 function handlePointerMove(event: PointerEvent) {
   if (activePointerId === null || event.pointerId !== activePointerId) {
     return;
   }
+
   if (currentPoint === null || activeStroke === null) {
     return;
   }
-  if (!ctx) {
-    throw new Error("Canvas 2D is unavailable");
-  }
 
   const { x, y } = getsCanvasPoint(event);
 
-  ctx.beginPath();
-  ctx.moveTo(currentPoint.x, currentPoint.y);
-  ctx.lineTo(x, y);
-  ctx.strokeStyle = activeStroke.color;
-  ctx.lineWidth = activeStroke.width;
-  ctx.lineCap = "round";
-  ctx.stroke();
-
-  currentPoint = { x, y };
-  activeStroke.points.push(currentPoint);
-}
-
-function drawPoint(event: PointerEvent) {
-  if (!ctx) {
-    throw new Error("Canvas 2D is unavailable");
-  }
-  if (!activeStroke) {
+  // Skip duplicate points
+  if (x === currentPoint.x && y === currentPoint.y) {
     return;
   }
 
-  const { x, y } = getsCanvasPoint(event);
-  ctx.fillStyle = activeStroke.color;
-  ctx.beginPath();
-  ctx.arc(x, y, activeStroke.width / 2, 0, Math.PI * 2);
-  ctx.fill();
+  // Update the current stroke data
+  currentPoint = { x, y };
+  activeStroke.points.push(currentPoint);
+
+  // Redraw the canvas using the updated data
+  renderDrawing();
 }
 
 function handlePointerUp(event: PointerEvent) {
-  if (!ctx) {
-    throw new Error("Canvas 2D is unavailable");
-  }
   if (activePointerId !== event.pointerId) {
     return;
   }
+
+  // Record the final pointer position
   handlePointerMove(event);
 
   // Save the completed stroke
   if (activeStroke !== null) {
     drawingItems.push(activeStroke);
     console.log("Drawing Data:", structuredClone(drawingItems));
-    activeStroke = null;
   }
 
+  // Clear temporary drawing state
+  activeStroke = null;
   activePointerId = null;
   currentPoint = null;
 
+  // Release pointer capture
   if (canvas.hasPointerCapture(event.pointerId)) {
     canvas.releasePointerCapture(event.pointerId);
   }
+
+  // Redraw the canvas from saved data
+  renderDrawing();
 }
 
 function handlePointerDown(event: PointerEvent) {
@@ -308,23 +440,28 @@ function handlePointerDown(event: PointerEvent) {
   };
 
   canvas.setPointerCapture(event.pointerId);
-  drawPoint(event);
+
+  // Render the starting point of the stroke
+  renderDrawing();
 }
 
 function handlePointerCancel(event: PointerEvent) {
-  if (!ctx) {
-    throw new Error("Canvas 2D is unavailable");
-  }
   if (activePointerId !== event.pointerId) {
     return;
   }
+
+  // Discard the unfinished stroke
   activePointerId = null;
   currentPoint = null;
   activeStroke = null;
 
+  // Release pointer capture if needed
   if (canvas.hasPointerCapture(event.pointerId)) {
     canvas.releasePointerCapture(event.pointerId);
   }
+
+  // Redraw without the canceled stroke
+  renderDrawing();
 }
 
 function lostPointerCapture(event: PointerEvent) {
@@ -334,9 +471,14 @@ function lostPointerCapture(event: PointerEvent) {
   if (activePointerId !== event.pointerId) {
     return;
   }
+
+  // Discard the unfinished stroke
   activePointerId = null;
   currentPoint = null;
   activeStroke = null;
+
+  // Redraw the canvas after losing pointer capture
+  renderDrawing();
 }
 
 canvas.addEventListener("pointerdown", handlePointerDown);
@@ -345,4 +487,24 @@ canvas.addEventListener("pointerup", handlePointerUp);
 canvas.addEventListener("pointercancel", handlePointerCancel);
 canvas.addEventListener("lostpointercapture", lostPointerCapture);
 
-app.append(heading, toolbar, stickerForm, canvas);
+// Create a button to redraw the canvas
+const redrawButton = document.createElement("button");
+redrawButton.type = "button";
+redrawButton.textContent = "Redraw";
+
+// Redraw without deleting saved drawing data
+redrawButton.addEventListener("click", () => {
+  renderDrawing();
+});
+
+app.append(
+  heading,
+  toolbar,
+  selectedToolMessage,
+  stickerForm,
+  redrawButton,
+  canvas
+);
+
+// Render the initial blank canvas
+renderDrawing();
