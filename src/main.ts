@@ -100,7 +100,18 @@ const tools: Tool[] = [
 ];
 
 let selectedToolId: string = "brush-thin";
+
+// 集中设置 toolbar 样式（display flex, flexWrap wrap, gap 8px, marginBottom 12px）
 const toolbar = document.createElement("div");
+toolbar.style.display = "flex";
+toolbar.style.flexWrap = "wrap";
+toolbar.style.gap = "8px";
+toolbar.style.marginBottom = "12px";
+
+// 创建当前工具说明段落并设置 aria-live="polite"
+const selectedToolMessage = document.createElement("p");
+selectedToolMessage.setAttribute("aria-live", "polite");
+
 const stickerForm = document.createElement("form");
 
 const instructionP = document.createElement("p");
@@ -204,7 +215,6 @@ let activePointerId: number | null = null;
 let currentPoint: Point | null = null;
 let activeStroke: StrokeData | null = null;
 
-// Store all completed drawing actions
 const drawingItems: DrawingData[] = [];
 
 function getsCanvasPoint(event: PointerEvent): Point {
@@ -216,12 +226,22 @@ function getsCanvasPoint(event: PointerEvent): Point {
 
 function renderToolbar() {
   toolbar.replaceChildren();
-  toolbar.style.marginBottom = "12px";
+  const selectedTool = tools.find((t) => t.id === selectedToolId);
+  if (selectedTool) {
+    if (selectedTool.kind === "brush") {
+      selectedToolMessage.textContent =
+        `Selected: ${selectedTool.name} · ${selectedTool.color} · Width: ${selectedTool.width}`;
+    } else if (selectedTool.kind === "sticker") {
+      selectedToolMessage.textContent =
+        `Selected: ${selectedTool.name} · ${selectedTool.text}`;
+    }
+  }
 
   tools.forEach((tool) => {
     const button = document.createElement("button");
     button.type = "button";
     button.textContent = tool.name;
+    button.dataset.toolId = tool.id;
 
     const isSelected = tool.id === selectedToolId;
     button.setAttribute("aria-pressed", isSelected ? "true" : "false");
@@ -236,11 +256,19 @@ function renderToolbar() {
       }
       selectedToolId = tool.id;
       renderToolbar();
+
+      const targetButton = toolbar.querySelector<HTMLButtonElement>(
+        `button[data-tool-id="${tool.id}"]`,
+      );
+      if (targetButton) {
+        targetButton.focus();
+      }
     });
 
     toolbar.appendChild(button);
   });
 }
+
 renderToolbar();
 
 function handlePointerMove(event: PointerEvent) {
@@ -292,7 +320,6 @@ function handlePointerUp(event: PointerEvent) {
   }
   handlePointerMove(event);
 
-  // Save the completed stroke
   if (activeStroke !== null) {
     drawingItems.push(activeStroke);
     console.log("Drawing Data:", structuredClone(drawingItems));
@@ -376,4 +403,4 @@ canvas.addEventListener("pointerup", handlePointerUp);
 canvas.addEventListener("pointercancel", handlePointerCancel);
 canvas.addEventListener("lostpointercapture", lostPointerCapture);
 
-app.append(heading, toolbar, stickerForm, canvas);
+app.append(heading, toolbar, selectedToolMessage, stickerForm, canvas);
