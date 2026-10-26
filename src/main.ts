@@ -1,4 +1,4 @@
-import type { DrawingData, Point, StrokeData } from "./types.ts";
+import type { DrawingData, Point, stickerData, StrokeData } from "./types.ts";
 import { tools } from "./tools.ts";
 import { renderDrawing as renderCanvas } from "./render.ts";
 import { createStickerForm } from "./stickerForm.ts";
@@ -24,14 +24,12 @@ heading.textContent = "D2 project";
 
 let selectedToolId: string = "brush-thin";
 
-// 集中设置 toolbar 样式（display flex, flexWrap wrap, gap 8px, marginBottom 12px）
 const toolbar = document.createElement("div");
 toolbar.style.display = "flex";
 toolbar.style.flexWrap = "wrap";
 toolbar.style.gap = "8px";
 toolbar.style.marginBottom = "12px";
 
-// 创建当前工具说明段落并设置 aria-live="polite"
 const selectedToolMessage = document.createElement("p");
 selectedToolMessage.setAttribute("aria-live", "polite");
 
@@ -48,7 +46,6 @@ let activeStroke: StrokeData | null = null;
 
 const drawingItems: DrawingData[] = [];
 
-// Redraw the entire canvas from saved drawing data
 function renderDrawing() {
   renderCanvas(canvas, ctx, drawingItems, activeStroke);
 }
@@ -118,11 +115,23 @@ function handlePointerDown(event: PointerEvent) {
     return;
   }
 
-  if (selectedTool.kind !== "brush") {
+  const { x, y } = getsCanvasPoint(canvas, event);
+
+  if (selectedTool.kind === "sticker") {
+    const item: stickerData = {
+      kind: "sticker",
+      x,
+      y,
+      text: selectedTool.text,
+      fontSize: selectedTool.fontSize,
+      fontFamily: selectedTool.fontFamily,
+      color: selectedTool.color,
+    };
+    drawingItems.push(item);
+    renderDrawing();
     return;
   }
 
-  const { x, y } = getsCanvasPoint(canvas, event);
   activePointerId = event.pointerId;
   currentPoint = { x, y };
 
