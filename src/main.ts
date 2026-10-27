@@ -45,6 +45,7 @@ let currentPoint: Point | null = null;
 let activeStroke: StrokeData | null = null;
 
 const drawingItems: DrawingData[] = [];
+const redoItems: DrawingData[] = [];
 
 function renderDrawing() {
   renderCanvas(canvas, ctx, drawingItems, activeStroke);
@@ -83,6 +84,8 @@ function handlePointerMove(event: PointerEvent) {
 }
 
 function handlePointerUp(event: PointerEvent) {
+  const previousItemCount = drawingItems.length;
+
   finishPointerStroke(
     event,
     canvas,
@@ -97,6 +100,11 @@ function handlePointerUp(event: PointerEvent) {
     },
     renderDrawing,
   );
+
+  // Clear redo history when a new stroke is completed
+  if (drawingItems.length > previousItemCount) {
+    redoItems.length = 0;
+  }
 }
 
 function handlePointerDown(event: PointerEvent) {
@@ -128,6 +136,10 @@ function handlePointerDown(event: PointerEvent) {
       color: selectedTool.color,
     };
     drawingItems.push(item);
+
+    // Clear redo history when a new sticker is placed
+    redoItems.length = 0;
+
     renderDrawing();
     return;
   }
@@ -200,11 +212,53 @@ redrawButton.addEventListener("click", () => {
   renderDrawing();
 });
 
+// Create am Umdo button
+const undoButton = document.createElement("button");
+undoButton.type = "button";
+undoButton.textContent = "Undo";
+
+// Undo the most recent drawing action
+undoButton.addEventListener("click", () => {
+  if (activePointerId !== null) {
+    return;
+  }
+
+  const lastItem = drawingItems.pop();
+  if (!lastItem) {
+    return;
+  }
+
+  redoItems.push(lastItem);
+  renderDrawing();
+});
+
+// Create a Redo button
+const redoButton = document.createElement("button");
+redoButton.type = "button";
+redoButton.textContent = "Redo";
+
+// Redo the most recently undone drawing action
+redoButton.addEventListener("click", () => {
+  if (activePointerId !== null) {
+    return;
+  }
+
+  const lastItem = redoItems.pop();
+  if (!lastItem) {
+    return;
+  }
+
+  drawingItems.push(lastItem);
+  renderDrawing();
+});
+
 app.append(
   heading,
   toolbar,
   selectedToolMessage,
   stickerForm,
+  undoButton,
+  redoButton,
   redrawButton,
   canvas,
 );
