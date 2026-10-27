@@ -18,6 +18,10 @@ A browser-based hand-drawing and sticker composition tool. It supports variable-
 
 - **Redraw:** Restore the canvas from saved drawing data without deleting content.
 
+- **Undo:** Click Undo to remove the most recent brush stroke or sticker. Multiple actions can be undone.
+
+- **Redo** Click Redo to restore the most recently undone action. Drawing a new stroke or placing a new sticker will clear the redo history.
+
 ## Session Data
 
 Drawings and custom tools are only saved in the current browser session. Refreshing or closing the page will not automatically restore them. Please keep this in mind to avoid expecting automatic persistence.
@@ -59,6 +63,16 @@ Whether building can be done offline once dependency caches are fully populated 
 Current drawing uses browser Canvas and system fonts, and does not rely on online image assets.
 
 The online website does not have offline caching guarantees, and reopening it offline is not promised to work.
+
+## What Gongjue Sun did
+
+- **Unified Rendering:** Created a shared rendering system for brush strokes and sticker using saved drawing data.
+
+- **Redraw Functionality:** Added a Redraw button to restore the canvas without losing existing drawings.
+
+- **Code Modularizaion:** Split the original main.ts into separate moduled, including types.ts, tools.ts, render.ts, stickerForm.ts, toolbar.ts, and pointer.ts, to make the code easier to maintain.
+
+- **Undo and Redo** Added Undo and Redo buttons for both brush strokes and stickers. Creating a new drawing action after undoing also clears the redo history.
 
 ## Credits
 
