@@ -5,7 +5,6 @@ export function renderToolButtons(
   selectedToolMessage: HTMLParagraphElement,
   tools: Tool[],
   selectedToolId: string,
-  isPointerActive: () => boolean,
   selectTool: (toolId: string) => void,
 ) {
   toolbar.replaceChildren();
@@ -34,9 +33,6 @@ export function renderToolButtons(
     }
 
     button.addEventListener("click", () => {
-      if (isPointerActive()) {
-        return;
-      }
       selectTool(tool.id);
 
       const targetButton = toolbar.querySelector<HTMLButtonElement>(

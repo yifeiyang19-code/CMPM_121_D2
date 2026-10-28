@@ -1,8 +1,15 @@
-import type { DrawingData, Point, stickerData, StrokeData } from "./types.ts";
+import type {
+  DrawingCommand,
+  Point,
+  stickerData,
+  StrokeData,
+} from "./types.ts";
 import { tools } from "./tools.ts";
 import { renderDrawing as renderCanvas } from "./render.ts";
 import { createStickerForm } from "./stickerForm.ts";
 import { renderToolButtons } from "./toolbar.ts";
+import { exportPng } from "./export.ts";
+import { createDrawingCommand } from "./commands.ts";
 import {
   getsCanvasPoint,
   handlePointerMove as updatePointerMove,
@@ -44,13 +51,17 @@ let activePointerId: number | null = null;
 let currentPoint: Point | null = null;
 let activeStroke: StrokeData | null = null;
 
-const drawingItems: DrawingData[] = [];
+const drawingItems: DrawingCommand[] = [];
+const redoItems: DrawingCommand[] = [];
 
 function renderDrawing() {
   renderCanvas(canvas, ctx, drawingItems, activeStroke);
 }
 
 function selectTool(toolId: string) {
+  if (activePointerId !== null) {
+    cancelActiveStroke();
+  }
   selectedToolId = toolId;
   renderToolbar();
 }
@@ -61,7 +72,6 @@ function renderToolbar() {
     selectedToolMessage,
     tools,
     selectedToolId,
-    () => activePointerId !== null,
     selectTool,
   );
 }
@@ -83,6 +93,8 @@ function handlePointerMove(event: PointerEvent) {
 }
 
 function handlePointerUp(event: PointerEvent) {
+  const previousItemCount = drawingItems.length;
+
   finishPointerStroke(
     event,
     canvas,
@@ -97,6 +109,11 @@ function handlePointerUp(event: PointerEvent) {
     },
     renderDrawing,
   );
+
+  if (drawingItems.length > previousItemCount) {
+    redoItems.length = 0;
+    updateUndoRedoButtons();
+  }
 }
 
 function handlePointerDown(event: PointerEvent) {
@@ -127,7 +144,11 @@ function handlePointerDown(event: PointerEvent) {
       fontFamily: selectedTool.fontFamily,
       color: selectedTool.color,
     };
-    drawingItems.push(item);
+    drawingItems.push(createDrawingCommand(item));
+
+    redoItems.length = 0;
+    updateUndoRedoButtons();
+
     renderDrawing();
     return;
   }
@@ -144,7 +165,17 @@ function handlePointerDown(event: PointerEvent) {
 
   canvas.setPointerCapture(event.pointerId);
 
-  // Render the starting point of the stroke
+  renderDrawing();
+}
+
+function cancelActiveStroke() {
+  const pointerId = activePointerId;
+  activePointerId = null;
+  currentPoint = null;
+  activeStroke = null;
+  if (pointerId !== null && canvas.hasPointerCapture(pointerId)) {
+    canvas.releasePointerCapture(pointerId);
+  }
   renderDrawing();
 }
 
@@ -152,19 +183,7 @@ function handlePointerCancel(event: PointerEvent) {
   if (activePointerId !== event.pointerId) {
     return;
   }
-
-  // Discard the unfinished stroke
-  activePointerId = null;
-  currentPoint = null;
-  activeStroke = null;
-
-  // Release pointer capture if needed
-  if (canvas.hasPointerCapture(event.pointerId)) {
-    canvas.releasePointerCapture(event.pointerId);
-  }
-
-  // Redraw without the canceled stroke
-  renderDrawing();
+  cancelActiveStroke();
 }
 
 function lostPointerCapture(event: PointerEvent) {
@@ -174,14 +193,7 @@ function lostPointerCapture(event: PointerEvent) {
   if (activePointerId !== event.pointerId) {
     return;
   }
-
-  // Discard the unfinished stroke
-  activePointerId = null;
-  currentPoint = null;
-  activeStroke = null;
-
-  // Redraw the canvas after losing pointer capture
-  renderDrawing();
+  cancelActiveStroke();
 }
 
 canvas.addEventListener("pointerdown", handlePointerDown);
@@ -190,24 +202,82 @@ canvas.addEventListener("pointerup", handlePointerUp);
 canvas.addEventListener("pointercancel", handlePointerCancel);
 canvas.addEventListener("lostpointercapture", lostPointerCapture);
 
-// Create a button to redraw the canvas
+globalThis.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && activePointerId !== null) {
+    cancelActiveStroke();
+  }
+});
+
 const redrawButton = document.createElement("button");
 redrawButton.type = "button";
 redrawButton.textContent = "Redraw";
 
-// Redraw without deleting saved drawing data
 redrawButton.addEventListener("click", () => {
   renderDrawing();
 });
+
+const exportButton = document.createElement("button");
+exportButton.type = "button";
+exportButton.textContent = "Export PNG";
+exportButton.addEventListener("click", () => {
+  exportPng(drawingItems, canvas.width, canvas.height);
+});
+
+const undoButton = document.createElement("button");
+undoButton.type = "button";
+undoButton.textContent = "Undo";
+
+undoButton.addEventListener("click", () => {
+  if (activePointerId !== null) {
+    cancelActiveStroke();
+  }
+
+  const lastItem = drawingItems.pop();
+  if (!lastItem) {
+    return;
+  }
+
+  redoItems.push(lastItem);
+  updateUndoRedoButtons();
+  renderDrawing();
+});
+
+const redoButton = document.createElement("button");
+redoButton.type = "button";
+redoButton.textContent = "Redo";
+
+redoButton.addEventListener("click", () => {
+  if (activePointerId !== null) {
+    cancelActiveStroke();
+  }
+
+  const lastItem = redoItems.pop();
+  if (!lastItem) {
+    return;
+  }
+
+  drawingItems.push(lastItem);
+  updateUndoRedoButtons();
+  renderDrawing();
+});
+
+function updateUndoRedoButtons() {
+  undoButton.disabled = drawingItems.length === 0;
+  redoButton.disabled = redoItems.length === 0;
+}
 
 app.append(
   heading,
   toolbar,
   selectedToolMessage,
   stickerForm,
+  undoButton,
+  redoButton,
+  exportButton,
   redrawButton,
   canvas,
 );
 
-// Render the initial blank canvas
+updateUndoRedoButtons();
+
 renderDrawing();
