@@ -104,6 +104,7 @@ function handlePointerUp(event: PointerEvent) {
   // Clear redo history when a new stroke is completed
   if (drawingItems.length > previousItemCount) {
     redoItems.length = 0;
+    updateUndoRedoButtons();
   }
 }
 
@@ -139,6 +140,7 @@ function handlePointerDown(event: PointerEvent) {
 
     // Clear redo history when a new sticker is placed
     redoItems.length = 0;
+    updateUndoRedoButtons();
 
     renderDrawing();
     return;
@@ -229,6 +231,7 @@ undoButton.addEventListener("click", () => {
   }
 
   redoItems.push(lastItem);
+  updateUndoRedoButtons();
   renderDrawing();
 });
 
@@ -249,8 +252,15 @@ redoButton.addEventListener("click", () => {
   }
 
   drawingItems.push(lastItem);
+  updateUndoRedoButtons();
   renderDrawing();
 });
+
+// Update Undo and Redo button states
+function updateUndoRedoButtons() {
+  undoButton.disabled = drawingItems.length === 0;
+  redoButton.disabled = redoItems.length === 0;
+}
 
 app.append(
   heading,
@@ -262,6 +272,9 @@ app.append(
   redrawButton,
   canvas,
 );
+
+// Initialize button states
+updateUndoRedoButtons();
 
 // Render the initial blank canvas
 renderDrawing();
