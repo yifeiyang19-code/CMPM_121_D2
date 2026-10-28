@@ -41,3 +41,8 @@ export type stickerData = {
 };
 
 export type DrawingData = StrokeData | stickerData;
+
+export interface DrawingCommand {
+  readonly data: DrawingData;
+  render(ctx: CanvasRenderingContext2D): void;
+}

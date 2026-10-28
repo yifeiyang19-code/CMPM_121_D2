@@ -1,4 +1,4 @@
-import type { DrawingData, StrokeData } from "./types.ts";
+import type { DrawingCommand, DrawingData, StrokeData } from "./types.ts";
 
 // Draw a saved stroke or sticker on the target canvas
 export function drawItem(
@@ -62,7 +62,7 @@ export function drawItem(
 export function renderDrawing(
   canvas: HTMLCanvasElement,
   ctx: CanvasRenderingContext2D | null,
-  drawingItems: DrawingData[],
+  drawingItems: DrawingCommand[],
   activeStroke: StrokeData | null,
 ) {
   // Check if the canvas context is available
@@ -80,9 +80,9 @@ export function renderDrawing(
   ctx.fillStyle = "white";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // Redraw all saved drawing items in order
+  // Redraw all saved drawing commands in order
   for (const item of drawingItems) {
-    drawItem(ctx, item);
+    item.render(ctx);
   }
 
   // Draw the stroke currently being created

@@ -1,4 +1,5 @@
-import type { DrawingData, Point, StrokeData } from "./types.ts";
+import type { DrawingCommand, Point, StrokeData } from "./types.ts";
+import { createDrawingCommand } from "./commands.ts";
 
 // Convert pointer coordinates to canvas coordinates
 export function getsCanvasPoint(
@@ -51,7 +52,7 @@ export function handlePointerUp(
   canvas: HTMLCanvasElement,
   activePointerId: number | null,
   activeStroke: StrokeData | null,
-  drawingItems: DrawingData[],
+  drawingItems: DrawingCommand[],
   onPointerMove: (event: PointerEvent) => void,
   clearPointerState: () => void,
   renderDrawing: () => void,
@@ -64,8 +65,7 @@ export function handlePointerUp(
   onPointerMove(event);
 
   if (activeStroke !== null) {
-    drawingItems.push(activeStroke);
-    console.log("Drawing Data:", structuredClone(drawingItems));
+    drawingItems.push(createDrawingCommand(activeStroke));
   }
 
   // Clear temporary drawing state
