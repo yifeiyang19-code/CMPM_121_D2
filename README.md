@@ -16,7 +16,7 @@ A browser-based hand-drawing and sticker composition tool. It supports variable-
 
 - **Cancel:** Clear unsaved form inputs without deleting created tools or drawings.
 
-- **Redraw:** Restore the canvas from saved drawing data without deleting content.
+- **Redraw:** Clear the entire canvas and drawing history, including undo and redo history. This action cannot be undone.
 
 - **Undo:** Click Undo to remove the most recent brush stroke or sticker. Multiple actions can be undone.
 
@@ -68,7 +68,7 @@ The online website does not have offline caching guarantees, and reopening it of
 
 - **Unified Rendering:** Created a shared rendering system for brush strokes and sticker using saved drawing data.
 
-- **Redraw Functionality:** Added a Redraw button to restore the canvas without losing existing drawings.
+- **Redraw Functionality:** Added a Redraw button and later updated it to clear the canvas and drawing history, including undo and redo history.
 
 - **Code Modularizaion:** Split the original main.ts into separate moduled, including types.ts, tools.ts, render.ts, stickerForm.ts, toolbar.ts, and pointer.ts, to make the code easier to maintain.
 

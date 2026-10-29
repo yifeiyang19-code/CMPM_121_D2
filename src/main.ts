@@ -211,10 +211,18 @@ redrawButton.textContent = "Redraw";
 
 // Redraw without deleting saved drawing data
 redrawButton.addEventListener("click", () => {
+  if (activePointerId !== null) {
+    return;
+  }
+
+  drawingItems.length = 0;
+  redoItems.length = 0;
+
   renderDrawing();
+  updateUndoRedoButtons();
 });
 
-// Create am Umdo button
+// Create an Undo button
 const undoButton = document.createElement("button");
 undoButton.type = "button";
 undoButton.textContent = "Undo";
